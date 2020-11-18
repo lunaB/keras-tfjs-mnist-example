@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>test</title>
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@2.0.0/dist/tf.min.js"></script>
+    <style>
+        canvas {
+            border: 1px solid #000;
+            width: 200px;
+            height: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="jumbotron">
+            <h2>Keras모델 Javascript로 옮겨보기</h2>
+            <p>MNIST그려보기</p>
+        </div>
+        <div class="d-flex justify-content-center">
+            <canvas id="canvas" width="28" height="28"></canvas>
+        </div>
+        <div class="d-flex justify-content-center m-3">
+            <button class="btn btn-sm btn-success mx-1" id="download">다운로드</button>
+            <button class="btn btn-sm btn-danger mx-1" id="clearCanvas">전체 지우기</button>
+        </div>
+    </div>
+</body>
+<script>
+    // 모델로드 
+    // bin 파일도 있어야함
+    // tensorflowjs를 사용중에 더 자세히 알고싶다면 
+    // https://js.tensorflow.org/api/0.6.1/#tf.Tensor.print
+    tf.loadLayersModel('model.json').then(function(model) {
+        
+        // 그림 그릴 canvas
+        var canvas = document.getElementById('canvas')
+        var ctx = canvas.getContext('2d')
+        ctx.imageSmoothingEnabled = false // 이미지 윤곽을 보는게 중요함으로 자동 smooth효과를 제거합니다. 
+        var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        
+        // 마우스 이벤트 조절
+        // 참고할만한 공식 문서
+        // https://developer.mozilla.org/en-US/docs/Web/API/Element/mousemove_event
+        var mouseDown = false, lastEvent;
+        $('#canvas').mousedown(function(e) {
+            lastEvent = e;
+            mouseDown = true;
+        }).mousemove(async function(e) {
+            if(mouseDown){
+                // 참고할 수 있는 공식문서
+                // https://developer.mozilla.org/ko/docs/Web/HTML/Canvas/Tutorial/Drawing_shapes
+                // 선긋기 시작
+                ctx.beginPath();
+                // 펜 움직이는 좌표 설정에 28/200을 곱해준 이유는 canvas 픽셀은 28*28로 설정되어있지만
+                // style 설정에서 강제로 200*200으로 보여지게 늘렸기 때문에 해당 비율로 그려질 수 있도록 하는것입니다.
+                // 햇갈리신다면 28/200을 곱하는 부분을 제거해 보시면 됩니다.
+                // 펜 옮기기
+                ctx.moveTo(lastEvent.offsetX*28/200, lastEvent.offsetY*28/200);
+                // 선 그리기 기존 펜위치부터 해당 위치까지 선그음
+                ctx.lineTo(e.offsetX*28/200, e.offsetY*28/200);
+                // 선 굵기
+                ctx.lineWidth = 2;
+                // 선 둥글게
+                ctx.lineCap='round';
+                // 캔버스 적용
+                ctx.stroke();
+                lastEvent = e;
+                
+                // 이미지 데이터를 받아옵니다
+                // 픽셀별로 R값 G값 B값 A값 다음픽셀R값 ... 순서로 들어있습니다.
+                // 참고할 수 있는 공식문서
+                // https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Pixel_manipulation_with_canvas
+                var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+//                console.log(data.length/4) // 길이를 4로 나눈 로그를 출력하면 784가나옵니다. (=28*28)
+                
+                var arr = []
+                
+                for(var i=0;i<28;i++) {
+                    for(var j=0;j<28;j++){
+                        var alpha = data[((i * (28 * 4)) + (j * 4)) + 3]   
+                        arr.push(alpha/255)
+                    }
+                }
+//                console.log(arr.length) // 찍어보면 784가 나옵니다 (=28*28)
+                
+                // 코드흐름에 필요없는 부분이지만 이해를 돕기위해 시각화 로그를 찍을 수 있게 했습니다.
+                for(var i=0;i<28;i++){
+                    var t = []
+                    for(var j=0; j<28;j++){
+                        if(arr[28*i+j]>0.5){
+                            t.push('O')   
+                        }else{
+                            t.push('.')
+                        }
+                    }
+                    console.log(t.join('')+' '+i)
+                }
+                
+                var output = model.predict(tf.tensor([arr]))
+                var result = output.argMax(1).dataSync()[0]
+                output.print()
+                console.log(result)
+            }
+        }).mouseup(function(){
+            mouseDown = false;
+        });
+        
+        // canvas를 clear합니다.
+        $('#clearCanvas').click(function () {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        })
+
+        // canvas이미지를 다운로드합니다.
+        $('#download').click(function () {
+            var canvas_img = canvas.toDataURL("image");
+            var image = new Image();
+            image.src = canvas_img;
+
+            var aTag = document.createElement('a');
+            aTag.download = 'canvas_img.png';
+            aTag.href = canvas_img;
+            aTag.click();
+        })
+        
+    });
+</script>
+</html>
