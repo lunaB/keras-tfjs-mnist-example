@@ -1,5 +1,6 @@
 # keras-tfjs-mnist-example
-Example of web visualization using tenserflow.js after learning with python and keras. (MNIST)
+Example of web visualization using tenserflow.js after learning with python and keras. (MNIST)  
+SAI 인공지능 동아리를 위해서 급하게 만들어본 프로젝트 가이드 코드입니다.
 
 ## 1. main 실행
 모델이 생성됩니다.
